@@ -1018,16 +1018,27 @@ MooseMesh::setSubdomainName(SubdomainID subdomain_id, SubdomainName name)
 void
 MooseMesh::setBoundaryName(BoundaryID boundary_id, BoundaryName name)
 {
+  BoundaryNameRef(boundary_id) = name;
+}
+
+std::string &
+MooseMesh::BoundaryNameRef(BoundaryID boundary_id)
+{
   BoundaryInfo & boundary_info = getMesh().get_boundary_info();
 
+  // We need to figure out if this boundary is a sideset or nodeset
   std::vector<BoundaryID> side_boundaries;
   boundary_info.build_side_boundary_ids(side_boundaries);
-
-  // We need to figure out if this boundary is a sideset or nodeset
   if (std::find(side_boundaries.begin(), side_boundaries.end(), boundary_id) != side_boundaries.end())
-    boundary_info.sideset_name(boundary_id) = name;
-  else
-    boundary_info.nodeset_name(boundary_id) = name;
+    return boundary_info.sideset_name(boundary_id);
+
+  std::vector<BoundaryID> node_boundaries;
+  boundary_info.build_node_boundary_ids(node_boundaries);
+  if (std::find(node_boundaries.begin(), node_boundaries.end(), boundary_id) != node_boundaries.end())
+    return boundary_info.nodeset_name(boundary_id);
+
+  // ID does neither belong to side nor to node boundaries
+  mooseError("MooseMesh::BoundaryNameRef(BoundaryID) tried to find boundary ID that does not exist.");
 }
 
 void

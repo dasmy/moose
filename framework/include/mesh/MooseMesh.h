@@ -284,6 +284,12 @@ public:
   StoredRange<MooseMesh::const_bnd_elem_iterator, const BndElement*> * getBoundaryElementRange();
 
   /**
+   * Returns a list of connections from boundary IDs to boundary nodes
+   */
+  const std::map<boundary_id_type, std::set<unsigned int> > getBoundaryNodeIds() { return _bnd_node_ids; }
+
+
+  /**
    * Returns a read-only reference to the set of subdomains currently
    * present in the Mesh.
    */
@@ -482,9 +488,14 @@ public:
   void setSubdomainName(SubdomainID subdomain_id, SubdomainName name);
 
   /**
-   * This method returns a writable reference to a boundary name based on the id parameter
+   * This method sets the boundary name based on the id parameter
    */
   void setBoundaryName(BoundaryID boundary_id, BoundaryName name);
+
+  /**
+   * This method returns a writable reference to a boundary name based on the id parameter
+   */
+  std::string & BoundaryNameRef(BoundaryID boundary_id);
 
   /**
    * This routine builds a multimap of boundary ids to matching boundary ids across all periodic boundaries
@@ -1050,5 +1061,6 @@ variant_filter_iterator<MeshBase::Predicate,
  */
 typedef StoredRange<MooseMesh::const_bnd_node_iterator, const BndNode*> ConstBndNodeRange;
 typedef StoredRange<MooseMesh::const_bnd_elem_iterator, const BndElement*> ConstBndElemRange;
+typedef const std::map<boundary_id_type, std::set<unsigned int> > BoundaryNodeIds;
 
 #endif /* MOOSEMESH_H */
