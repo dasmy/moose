@@ -1223,25 +1223,35 @@ NonlinearSystem::computeNodalBCs(NumericVector<Number> & residual)
 {
   PARALLEL_TRY {
     // last thing to do are nodal BCs
-    ConstBndNodeRange & bnd_nodes = *_mesh.getBoundaryNodeRange();
-    for (ConstBndNodeRange::const_iterator nd = bnd_nodes.begin() ; nd != bnd_nodes.end(); ++nd)
+    BoundaryNodeIds & bnd_node_ids(_mesh.getBoundaryNodeIds());
+    std::vector<NodalBC *> bcs;
+
+    for (BoundaryNodeIds::const_iterator bnd = bnd_node_ids.begin() ; bnd != bnd_node_ids.end(); ++bnd)
     {
-      const BndNode * bnode = *nd;
-      BoundaryID boundary_id = bnode->_bnd_id;
-      Node * node = bnode->_node;
+      const BoundaryID bnd_id(bnd->first);
+      _bcs[0].activeNodal(bnd_id, bcs);
 
-      if (node->processor_id() == processor_id())
+      std::cout << _mesh.BoundaryNameRef(bnd_id) << " bcs.size()=" << bcs.size() << " node_ids.size()=" << bnd->second.size() << std::endl;
+      if (bcs.size()>0)
       {
-        // reinit variables in nodes
-        _fe_problem.reinitNodeFace(node, boundary_id, 0);
-
-        std::vector<NodalBC *> bcs;
-        _bcs[0].activeNodal(boundary_id, bcs);
-        for (std::vector<NodalBC *>::iterator it = bcs.begin(); it != bcs.end(); ++it)
+        const std::set<unsigned int> & node_ids(bnd->second);
+        for (std::set<unsigned int>::const_iterator nid = node_ids.begin(); nid != node_ids.end(); ++nid)
         {
-          NodalBC * bc = *it;
-          if (bc->shouldApply())
-            bc->computeResidual(residual);
+          const Node & node(_mesh.node(*nid));
+
+          if (node.processor_id() == processor_id())
+          {
+            // reinit variables in nodes - This call is the reason for looping over bcs inside a node loop
+            // instead of the other way round: We do not know, how expensive the _fe_problem.reinitNodeFace()
+            // call actually is. This is why we want to call it as seldom as possible.
+            _fe_problem.reinitNodeFace(&node, bnd_id, 0);
+
+            for (std::vector<NodalBC *>::iterator bc = bcs.begin(); bc != bcs.end(); ++bc)
+            {
+              if ((*bc)->shouldApply())
+              (*bc)->computeResidual(residual);
+            }
+          }
         }
       }
     }
